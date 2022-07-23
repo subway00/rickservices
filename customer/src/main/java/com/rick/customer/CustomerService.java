@@ -2,6 +2,8 @@ package com.rick.customer;
 
 import com.rick.clients.fraud.FraudCheckResponse;
 import com.rick.clients.fraud.FraudClient;
+import com.rick.clients.notification.NotificationClient;
+import com.rick.clients.notification.NotificationRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -11,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final NotificationClient notificationClient;
     private final RestTemplate restTemplate;
     private final FraudClient fraudClient;
     public void registerCustomer(CustomerRegistrationRequest request) {
@@ -30,6 +33,15 @@ public class CustomerService {
         if(fraudCheckResponse.isFrauster()) {
             throw new IllegalStateException("fraudster");
         }
+
         // todo: send notification
+        notificationClient.sendNotification((
+                new NotificationRequest(
+                        customer.getId(),
+                        customer.getEmail(),
+                        String.format("Hi %s, welcome to rick...",
+                            customer.getFirstName())
+                )
+                ));
     }
 }
