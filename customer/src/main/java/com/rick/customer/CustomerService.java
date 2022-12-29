@@ -1,5 +1,6 @@
 package com.rick.customer;
 
+import com.rick.amqp.RabbitMQMessageProducer;
 import com.rick.clients.fraud.FraudCheckResponse;
 import com.rick.clients.fraud.FraudClient;
 import com.rick.clients.notification.NotificationClient;
@@ -13,8 +14,9 @@ import org.springframework.web.client.RestTemplate;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-    private final NotificationClient notificationClient;
-    private final RestTemplate restTemplate;
+//    private final NotificationClient notificationClient;
+//    private final RestTemplate restTemplate;
+    private final RabbitMQMessageProducer rabbitMQMessageProducer;
     private final FraudClient fraudClient;
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
@@ -25,7 +27,6 @@ public class CustomerService {
         // todo: check if email valid
         // todo: check if eamil not taken
         customerRepository.saveAndFlush(customer);
-        // todo: check if fraudster
 
         FraudCheckResponse fraudCheckResponse =
                 fraudClient.isFraudster(customer.getId());
@@ -34,14 +35,24 @@ public class CustomerService {
             throw new IllegalStateException("fraudster");
         }
 
-        // todo: send notification
-        notificationClient.sendNotification((
-                new NotificationRequest(
-                        customer.getId(),
-                        customer.getEmail(),
-                        String.format("Hi %s, welcome to rick...",
+//        notificationClient.sendNotification((
+//                new NotificationRequest(
+//                        customer.getId(),
+//                        customer.getEmail(),
+//                        String.format("Hi %s, welcome to rick...",
+//                            customer.getFirstName())
+//                )
+//                ));
+
+        NotificationRequest notificationRequest = new NotificationRequest(
+                customer.getId(),
+                customer.getEmail(),
+                String.format("Hi %s, welcome to rick...",
                             customer.getFirstName())
-                )
-                ));
+
+        );
+        rabbitMQMessageProducer.publish(notificationRequest,
+                "internal.exchange",
+                "internal.notification.routing-key");
     }
 }
